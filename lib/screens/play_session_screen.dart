@@ -211,8 +211,9 @@ class _TopBar extends StatelessWidget {
             tooltip: 'Undo',
             onPressed: state.canUndo
                 ? () {
-                    if (state.undo())
+                    if (state.undo()) {
                       context.read<AudioController>().playSfx(Sfx.undo);
+                    }
                   }
                 : null,
           ),
