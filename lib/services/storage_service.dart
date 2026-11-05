@@ -19,6 +19,9 @@ class StorageService {
   static const _kLevelScores = 'level_best_scores';
   static const _kLevelStars = 'level_stars';
   static const _kSavedBoard = 'saved_board';
+  static const _kVoicesOn = 'voices_on';
+  static const _kMusicTrack = 'music_track';
+  static const _kHints = 'hints_left';
 
   static Future<StorageService> create() async =>
       StorageService._(await SharedPreferences.getInstance());
@@ -67,6 +70,15 @@ class StorageService {
   bool get sfxOn => _prefs.getBool(_kSfxOn) ?? true;
   Future<void> setSfxOn(bool v) => _prefs.setBool(_kSfxOn, v);
 
+  bool get voicesOn => _prefs.getBool(_kVoicesOn) ?? true;
+  Future<void> setVoicesOn(bool v) => _prefs.setBool(_kVoicesOn, v);
+
+  int get musicTrack => _prefs.getInt(_kMusicTrack) ?? 0;
+  Future<void> setMusicTrack(int v) => _prefs.setInt(_kMusicTrack, v);
+
+  int get hints => _prefs.getInt(_kHints) ?? 3;
+  Future<void> setHints(int v) => _prefs.setInt(_kHints, v);
+
   Future<void> resetProgress() async {
     for (final k in [
       _kHighScore,
@@ -75,6 +87,7 @@ class StorageService {
       _kLevelScores,
       _kLevelStars,
       _kSavedBoard,
+      _kHints,
     ]) {
       await _prefs.remove(k);
     }

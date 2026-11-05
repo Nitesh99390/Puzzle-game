@@ -28,14 +28,14 @@ class LevelDef {
 }
 
 const int kTubeCapacity = 4;
-const int kLevelCount = 30;
+const int kLevelCount = 45;
 
-/// 30 handcrafted-by-seed levels: from 3 colours up to 12 colours.
+/// 45 seeded levels: from 3 colours up to 12 colours.
 final List<LevelDef> gameLevels = List.generate(kLevelCount, (i) {
   final n = i + 1;
   return LevelDef(
     number: n,
-    colors: min(3 + i ~/ 3, 12),
+    colors: min(3 + i ~/ 4, 12),
     capacity: kTubeCapacity,
     emptyTubes: 2,
     seed: 1000 + n * 7919,
@@ -85,6 +85,25 @@ class PuzzleRules {
 
   static bool isSolved(Board b, int capacity) =>
       b.every((t) => t.isEmpty || isTubeComplete(t, capacity));
+
+  /// True when at least one meaningful move exists.
+  static bool hasUsefulMove(Board b, int capacity) {
+    for (var f = 0; f < b.length; f++) {
+      for (var t = 0; t < b.length; t++) {
+        if (!canPour(b, f, t, capacity)) continue;
+        if (b[t].isEmpty && isUniform(b[f])) continue;
+        return true;
+      }
+    }
+    return false;
+  }
+}
+
+/// A single pour move.
+class Move {
+  const Move(this.from, this.to);
+  final int from;
+  final int to;
 }
 
 /// Depth-first solver used to guarantee every generated level is solvable.
@@ -93,6 +112,41 @@ class PuzzleSolver {
 
   static String _key(Board b) =>
       (b.map((t) => t.join(',')).toList()..sort()).join('|');
+
+  /// Finds the first move of a solution from [start], or null if none found.
+  static Move? hint(Board start, int capacity, {int nodeLimit = 40000}) {
+    if (PuzzleRules.isSolved(start, capacity)) return null;
+    final visited = <String>{};
+    // Each stack entry remembers the first move that led to it.
+    final stack = <(Board, Move?)>[(cloneBoard(start), null)];
+    var nodes = 0;
+    while (stack.isNotEmpty) {
+      final (b, first) = stack.removeLast();
+      if (PuzzleRules.isSolved(b, capacity)) return first;
+      if (!visited.add(_key(b))) continue;
+      if (++nodes > nodeLimit) break;
+      final weak = <(Board, Move?)>[];
+      final strong = <(Board, Move?)>[];
+      for (var f = 0; f < b.length; f++) {
+        var triedEmpty = false;
+        for (var t = 0; t < b.length; t++) {
+          if (!PuzzleRules.canPour(b, f, t, capacity)) continue;
+          if (b[t].isEmpty) {
+            if (PuzzleRules.isUniform(b[f]) || triedEmpty) continue;
+            triedEmpty = true;
+          }
+          final next = cloneBoard(b);
+          PuzzleRules.pour(next, f, t, capacity);
+          final entry = (next, first ?? Move(f, t));
+          (b[t].isEmpty ? weak : strong).add(entry);
+        }
+      }
+      stack
+        ..addAll(weak)
+        ..addAll(strong);
+    }
+    return null;
+  }
 
   static bool isSolvable(Board start, int capacity, {int nodeLimit = 30000}) {
     final visited = <String>{};

@@ -5,28 +5,26 @@ import 'package:flutter/material.dart';
 
 import '../style/palette.dart';
 
-/// Full-screen confetti celebration driven by a [ConfettiController].
-///
-/// Fires from three emitters (top-centre blast plus two side cannons) so
-/// the whole screen is covered.
+/// Full-screen confetti + tricolour ribbon celebration.
 class CelebrationOverlay extends StatelessWidget {
   const CelebrationOverlay({super.key, required this.controller});
 
   final ConfettiController controller;
 
   static const _colors = [
-    Palette.accentPink,
-    Palette.accentYellow,
-    Palette.accentGreen,
-    Palette.accentBlue,
-    Color(0xFF9B5DE5),
-    Color(0xFFF15BB5),
+    Palette.saffron,
+    Palette.gold,
+    Palette.indiaGreen,
+    Palette.chakraBlue,
+    Palette.pink,
+    Palette.cyan,
+    Colors.white,
   ];
 
   Path _star(Size size) {
     const points = 5;
     final half = size.width / 2;
-    final inner = half / 2.5;
+    final inner = half / 2.4;
     final path = Path();
     const step = pi / points;
     for (var i = 0; i < points * 2; i++) {
@@ -38,6 +36,11 @@ class CelebrationOverlay extends StatelessWidget {
     return path..close();
   }
 
+  Path _ribbon(Size size) => Path()
+    ..addRect(
+      Rect.fromLTWH(0, size.height * 0.35, size.width, size.height * 0.3),
+    );
+
   @override
   Widget build(BuildContext context) {
     return IgnorePointer(
@@ -48,11 +51,11 @@ class CelebrationOverlay extends StatelessWidget {
             child: ConfettiWidget(
               confettiController: controller,
               blastDirectionality: BlastDirectionality.explosive,
-              numberOfParticles: 40,
-              emissionFrequency: 0.06,
-              maxBlastForce: 32,
+              numberOfParticles: 46,
+              emissionFrequency: 0.045,
+              maxBlastForce: 34,
               minBlastForce: 12,
-              gravity: 0.18,
+              gravity: 0.16,
               colors: _colors,
               createParticlePath: _star,
             ),
@@ -62,12 +65,13 @@ class CelebrationOverlay extends StatelessWidget {
             child: ConfettiWidget(
               confettiController: controller,
               blastDirection: -pi / 4,
-              numberOfParticles: 25,
-              emissionFrequency: 0.08,
-              maxBlastForce: 45,
-              minBlastForce: 20,
-              gravity: 0.25,
+              numberOfParticles: 30,
+              emissionFrequency: 0.05,
+              maxBlastForce: 52,
+              minBlastForce: 22,
+              gravity: 0.24,
               colors: _colors,
+              createParticlePath: _ribbon,
             ),
           ),
           Align(
@@ -75,12 +79,13 @@ class CelebrationOverlay extends StatelessWidget {
             child: ConfettiWidget(
               confettiController: controller,
               blastDirection: -3 * pi / 4,
-              numberOfParticles: 25,
-              emissionFrequency: 0.08,
-              maxBlastForce: 45,
-              minBlastForce: 20,
-              gravity: 0.25,
+              numberOfParticles: 30,
+              emissionFrequency: 0.05,
+              maxBlastForce: 52,
+              minBlastForce: 22,
+              gravity: 0.24,
               colors: _colors,
+              createParticlePath: _ribbon,
             ),
           ),
         ],

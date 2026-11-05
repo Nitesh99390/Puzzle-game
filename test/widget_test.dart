@@ -23,6 +23,26 @@ void main() {
     expect(PuzzleRules.canPour(board, 0, 1, 4), isFalse);
   });
 
+  test('hint returns a move that keeps the board solvable', () {
+    for (final level in gameLevels.take(8)) {
+      final b = LevelGenerator.generate(level);
+      final m = PuzzleSolver.hint(b, level.capacity);
+      expect(m, isNotNull, reason: 'level ${level.number}');
+      expect(PuzzleRules.canPour(b, m!.from, m.to, level.capacity), isTrue);
+      PuzzleRules.pour(b, m.from, m.to, level.capacity);
+      expect(PuzzleSolver.isSolvable(b, level.capacity), isTrue);
+    }
+  });
+
+  test('stuck detection reports no useful move for a stuck board', () {
+    // Two single colours sitting on top of each other, no empty tube.
+    final board = <List<int>>[
+      [0, 1],
+      [1, 0],
+    ];
+    expect(PuzzleRules.hasUsefulMove(board, 4), isFalse);
+  });
+
   test('every generated level is solvable', () {
     for (final level in gameLevels) {
       final b = LevelGenerator.generate(level);

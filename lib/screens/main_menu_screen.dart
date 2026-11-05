@@ -2,124 +2,182 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:provider/provider.dart';
 
+import '../game/game_logic.dart';
+import '../services/audio_controller.dart';
+import '../services/neta_voices.dart';
 import '../services/progress_controller.dart';
 import '../services/settings_controller.dart';
 import '../style/palette.dart';
+import '../widgets/animated_background.dart';
 import '../widgets/game_button.dart';
+import '../widgets/neta_speech_bubble.dart';
+import '../widgets/tube_painter.dart';
 import 'level_selection_screen.dart';
 import 'play_session_screen.dart';
 import 'settings_screen.dart';
+import 'soundboard_screen.dart';
+import 'tutorial_screen.dart';
 
-class MainMenuScreen extends StatelessWidget {
+class MainMenuScreen extends StatefulWidget {
   const MainMenuScreen({super.key});
 
+  @override
+  State<MainMenuScreen> createState() => _MainMenuScreenState();
+}
+
+class _MainMenuScreenState extends State<MainMenuScreen> {
   @override
   Widget build(BuildContext context) {
     final progress = context.watch<ProgressController>();
     final settings = context.watch<SettingsController>();
+    final audio = context.read<AudioController>();
     final saved = progress.storage.savedBoard;
+    final resumeLevel = saved?.level ?? progress.nextLevelToPlay;
 
     return Scaffold(
-      backgroundColor: Palette.backgroundMain,
-      body: SafeArea(
-        child: Stack(
-          children: [
-            Positioned(
-              top: 8,
-              right: 8,
-              child: RoundIconButton(
-                icon: settings.muted
-                    ? Icons.volume_off_rounded
-                    : Icons.volume_up_rounded,
-                tooltip: settings.muted ? 'Unmute' : 'Mute',
-                onPressed: settings.toggleMuted,
-              ),
-            ),
-            Center(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 24,
-                  vertical: 32,
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
+      body: AnimatedBackground(
+        child: SafeArea(
+          child: Stack(
+            children: [
+              Positioned(
+                top: 6,
+                left: 12,
+                right: 12,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
                   children: [
-                    const _Logo(),
-                    const SizedBox(height: 12),
-                    Text(
-                      'Sort the colours!',
-                      style: TextStyle(
-                        fontFamily: Palette.displayFont,
-                        fontSize: 22,
-                        color: Palette.inkLight,
-                      ),
-                    ).animate().fadeIn(delay: 500.ms, duration: 500.ms),
-                    const SizedBox(height: 28),
-                    _StatsCard(
-                      highScore: progress.highScore,
-                      levels: progress.highestLevelReached,
-                      stars: progress.totalStars,
+                    RoundIconButton(
+                      icon: settings.muted
+                          ? Icons.volume_off_rounded
+                          : Icons.volume_up_rounded,
+                      tooltip: settings.muted ? 'Unmute' : 'Mute',
+                      onPressed: settings.toggleMuted,
                     ),
-                    const SizedBox(height: 36),
-                    ..._buttons(context, progress, saved?.level)
-                        .animate(interval: 90.ms, delay: 350.ms)
-                        .fadeIn(duration: 300.ms)
-                        .slideY(
-                          begin: 0.6,
-                          curve: Curves.easeOutBack,
-                          duration: 450.ms,
-                        ),
-                    const SizedBox(height: 28),
-                    const Text(
-                      'Music by Mr Smith',
-                      style: TextStyle(color: Palette.inkLight, fontSize: 12),
+                    const SizedBox(width: 8),
+                    RoundIconButton(
+                      icon: Icons.settings_rounded,
+                      tooltip: 'Settings',
+                      onPressed: () => Navigator.of(
+                        context,
+                      ).push(fadeRoute(const SettingsScreen())),
                     ),
                   ],
                 ),
               ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  List<Widget> _buttons(
-    BuildContext context,
-    ProgressController p,
-    int? savedLevel,
-  ) {
-    final resumeLevel = savedLevel ?? p.nextLevelToPlay;
-    return [
-      GameButton(
-        label: savedLevel != null ? 'Continue  $resumeLevel' : 'Play',
-        icon: Icons.play_arrow_rounded,
-        onPressed: () => Navigator.of(context).push(
-          fadeRoute(
-            PlaySessionScreen(
-              levelNumber: resumeLevel,
-              resume: savedLevel != null,
-            ),
+              Center(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(22, 64, 22, 26),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const _Logo(),
+                      const SizedBox(height: 4),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          gradient: Palette.tricolor,
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: const Text(
+                          'NETA EDITION',
+                          style: TextStyle(
+                            fontFamily: Palette.bodyFont,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 11,
+                            letterSpacing: 3,
+                            color: Palette.bgTop,
+                          ),
+                        ),
+                      ).animate().fadeIn(delay: 400.ms, duration: 500.ms),
+                      const SizedBox(height: 18),
+                      _StatsBar(progress: progress),
+                      const SizedBox(height: 22),
+                      _VoiceTeaser(
+                        onTap: () => Navigator.of(
+                          context,
+                        ).push(fadeRoute(const SoundboardScreen())),
+                      ),
+                      const SizedBox(height: 20),
+                      GameButton(
+                            label: saved != null
+                                ? 'Continue · Level $resumeLevel'
+                                : 'Play',
+                            icon: Icons.play_arrow_rounded,
+                            onPressed: () {
+                              audio.react(VoiceEvent.levelStart);
+                              Navigator.of(context).push(
+                                fadeRoute(
+                                  PlaySessionScreen(
+                                    levelNumber: resumeLevel,
+                                    resume: saved != null,
+                                  ),
+                                ),
+                              );
+                            },
+                          )
+                          .animate()
+                          .fadeIn(delay: 300.ms)
+                          .slideY(begin: 0.5, curve: Curves.easeOutBack),
+                      const SizedBox(height: 12),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          _MiniAction(
+                            icon: Icons.grid_view_rounded,
+                            label: 'Levels',
+                            onTap: () => Navigator.of(
+                              context,
+                            ).push(fadeRoute(const LevelSelectionScreen())),
+                          ),
+                          const SizedBox(width: 10),
+                          _MiniAction(
+                            icon: Icons.mic_rounded,
+                            label: 'Soundboard',
+                            onTap: () => Navigator.of(
+                              context,
+                            ).push(fadeRoute(const SoundboardScreen())),
+                          ),
+                          const SizedBox(width: 10),
+                          _MiniAction(
+                            icon: Icons.help_outline_rounded,
+                            label: 'How to play',
+                            onTap: () => Navigator.of(
+                              context,
+                            ).push(fadeRoute(const TutorialScreen())),
+                          ),
+                        ],
+                      ).animate().fadeIn(delay: 520.ms, duration: 400.ms),
+                      const SizedBox(height: 26),
+                      Text(
+                        '🎵 ${audio.currentTrackTitle} · Kevin MacLeod (CC BY)',
+                        style: const TextStyle(
+                          fontFamily: Palette.bodyFont,
+                          color: Palette.textMuted,
+                          fontSize: 11,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      const Text(
+                        'Meme voices belong to their original creators · fan parody',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontFamily: Palette.bodyFont,
+                          color: Palette.textMuted,
+                          fontSize: 9.5,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ),
-      const SizedBox(height: 16),
-      GameButton(
-        label: 'Levels',
-        icon: Icons.grid_view_rounded,
-        color: Palette.accentBlue,
-        onPressed: () =>
-            Navigator.of(context).push(fadeRoute(const LevelSelectionScreen())),
-      ),
-      const SizedBox(height: 16),
-      GameButton(
-        label: 'Settings',
-        icon: Icons.settings_rounded,
-        color: Palette.accentGreen,
-        onPressed: () =>
-            Navigator.of(context).push(fadeRoute(const SettingsScreen())),
-      ),
-    ];
+    );
   }
 }
 
@@ -128,111 +186,224 @@ class _Logo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const letters = 'Color Pour';
-    final colors = Palette.liquids;
-    return Wrap(
-      alignment: WrapAlignment.center,
+    return Column(
       children: [
-        for (var i = 0; i < letters.length; i++)
-          Text(
-                letters[i],
+        ShaderMask(
+              shaderCallback: (r) => const LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [Color(0xFFFFE9A8), Color(0xFFFFB347), Color(0xFFFF7043)],
+              ).createShader(r),
+              child: const Text(
+                'Color Pour',
                 style: TextStyle(
                   fontFamily: Palette.displayFont,
-                  fontSize: 60,
-                  height: 1.1,
-                  color: letters[i] == ' '
-                      ? Colors.transparent
-                      : colors[i % colors.length],
-                  shadows: const [
-                    Shadow(color: Palette.ink, offset: Offset(3, 3)),
+                  fontWeight: FontWeight.w800,
+                  fontSize: 54,
+                  height: 1.0,
+                  color: Colors.white,
+                  shadows: [
+                    Shadow(
+                      color: Color(0x88000000),
+                      offset: Offset(0, 5),
+                      blurRadius: 12,
+                    ),
                   ],
                 ),
-              )
-              .animate(delay: (60 * i).ms)
-              .slideY(begin: -1.5, duration: 700.ms, curve: Curves.bounceOut)
-              .fadeIn(duration: 200.ms)
-              .then(delay: 1.5.seconds)
-              .animate(
-                onPlay: (c) => c.repeat(reverse: true),
-                delay: (120 * i).ms,
-              )
-              .moveY(
-                begin: 0,
-                end: -6,
-                duration: 1200.ms,
-                curve: Curves.easeInOut,
               ),
+            )
+            .animate()
+            .fadeIn(duration: 500.ms)
+            .slideY(begin: -0.5, curve: Curves.easeOutBack)
+            .scaleXY(begin: 0.85, curve: Curves.easeOutBack),
+        const SizedBox(height: 2),
+        const Text(
+          'sort the colours · neta style',
+          style: TextStyle(
+            fontFamily: Palette.bodyFont,
+            fontSize: 12.5,
+            letterSpacing: 1.4,
+            color: Palette.textSecondary,
+          ),
+        ).animate().fadeIn(delay: 250.ms),
       ],
     );
   }
 }
 
-class _StatsCard extends StatelessWidget {
-  const _StatsCard({
-    required this.highScore,
-    required this.levels,
-    required this.stars,
-  });
-  final int highScore;
-  final int levels;
-  final int stars;
+class _StatsBar extends StatelessWidget {
+  const _StatsBar({required this.progress});
+  final ProgressController progress;
 
   @override
   Widget build(BuildContext context) {
-    Widget stat(IconData icon, String label, String value, Color c) => Expanded(
+    Widget cell(IconData icon, String value, String label, Color c) => Expanded(
       child: Column(
         children: [
-          Icon(icon, color: c, size: 28),
-          const SizedBox(height: 4),
+          Icon(icon, color: c, size: 20),
+          const SizedBox(height: 2),
           Text(
             value,
             style: const TextStyle(
               fontFamily: Palette.displayFont,
-              fontSize: 22,
-              color: Palette.ink,
+              fontWeight: FontWeight.w800,
+              fontSize: 18,
+              color: Colors.white,
             ),
           ),
           Text(
             label,
-            style: const TextStyle(fontSize: 12, color: Palette.inkLight),
+            style: const TextStyle(
+              fontFamily: Palette.bodyFont,
+              fontSize: 9.5,
+              color: Palette.textMuted,
+            ),
           ),
         ],
       ),
     );
-    return Container(
-          constraints: const BoxConstraints(maxWidth: 360),
-          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
-          decoration: BoxDecoration(
-            color: Palette.trueWhite,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: Palette.ink, width: 3),
-            boxShadow: const [
-              BoxShadow(color: Palette.ink, offset: Offset(0, 4)),
-            ],
-          ),
+    return GlassCard(
+          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+          radius: 20,
           child: Row(
             children: [
-              stat(
+              cell(
                 Icons.emoji_events_rounded,
-                'High score',
-                '$highScore',
-                Palette.accentYellow,
+                '${progress.highScore}',
+                'Best score',
+                Palette.gold,
               ),
-              stat(Icons.flag_rounded, 'Levels', '$levels', Palette.accentBlue),
-              stat(Icons.star_rounded, 'Stars', '$stars', Palette.accentPink),
+              cell(
+                Icons.flag_rounded,
+                '${progress.highestLevelReached}/$kLevelCount',
+                'Levels',
+                Palette.cyan,
+              ),
+              cell(
+                Icons.star_rounded,
+                '${progress.totalStars}',
+                'Stars',
+                Palette.pink,
+              ),
             ],
           ),
         )
         .animate()
-        .fadeIn(delay: 250.ms)
-        .scaleXY(begin: 0.85, curve: Curves.easeOutBack);
+        .fadeIn(delay: 180.ms)
+        .scaleXY(begin: 0.92, curve: Curves.easeOutBack);
+  }
+}
+
+/// Rotating famous-line teaser, tapping opens the soundboard.
+class _VoiceTeaser extends StatefulWidget {
+  const _VoiceTeaser({required this.onTap});
+  final VoidCallback onTap;
+
+  @override
+  State<_VoiceTeaser> createState() => _VoiceTeaserState();
+}
+
+class _VoiceTeaserState extends State<_VoiceTeaser> {
+  int _i = 0;
+
+  @override
+  Widget build(BuildContext context) {
+    final line = NetaVoices.all[_i % NetaVoices.all.length];
+    return GestureDetector(
+      onTap: () {
+        context.read<AudioController>().speakLine(line);
+        widget.onTap();
+      },
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(
+                Icons.mic_rounded,
+                size: 13,
+                color: Palette.textMuted,
+              ),
+              const SizedBox(width: 5),
+              Text(
+                'NETA SOUNDBOARD · TAP TO OPEN',
+                style: TextStyle(
+                  fontFamily: Palette.bodyFont,
+                  fontSize: 9,
+                  letterSpacing: 1.6,
+                  color: Palette.textMuted,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          // Force a fresh bubble per line so the pop animation replays.
+          NetaSpeechBubble(key: ValueKey(line.id), line: line, compact: true),
+        ],
+      ),
+    )
+        .animate(onPlay: (c) => c.repeat())
+        .then(delay: 4.seconds)
+        .callback(
+          callback: (_) {
+            if (mounted) setState(() => _i++);
+          },
+        );
+  }
+}
+
+class _MiniAction extends StatelessWidget {
+  const _MiniAction({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () {
+        final audio = context.read<AudioController>();
+        audio.ensureMusicStarted();
+        audio.playSfx(Sfx.button);
+        onTap();
+      },
+      child: Container(
+        width: 94,
+        padding: const EdgeInsets.symmetric(vertical: 10),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+        ),
+        child: Column(
+          children: [
+            Icon(icon, color: Colors.white, size: 20),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              style: const TextStyle(
+                fontFamily: Palette.bodyFont,
+                fontSize: 10.5,
+                fontWeight: FontWeight.w600,
+                color: Palette.textSecondary,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 
 /// Shared fade+slide page transition.
 Route<T> fadeRoute<T>(Widget page) => PageRouteBuilder<T>(
-  transitionDuration: const Duration(milliseconds: 350),
-  reverseTransitionDuration: const Duration(milliseconds: 250),
+  transitionDuration: const Duration(milliseconds: 380),
+  reverseTransitionDuration: const Duration(milliseconds: 260),
   pageBuilder: (_, __, ___) => page,
   transitionsBuilder: (_, anim, __, child) {
     final curved = CurvedAnimation(parent: anim, curve: Curves.easeOutCubic);
@@ -240,7 +411,7 @@ Route<T> fadeRoute<T>(Widget page) => PageRouteBuilder<T>(
       opacity: curved,
       child: SlideTransition(
         position: Tween(
-          begin: const Offset(0, 0.06),
+          begin: const Offset(0, 0.05),
           end: Offset.zero,
         ).animate(curved),
         child: child,
@@ -248,3 +419,30 @@ Route<T> fadeRoute<T>(Widget page) => PageRouteBuilder<T>(
     );
   },
 );
+
+/// Small tube preview used in a few places (kept here to avoid cycles).
+class MiniTubePreview extends StatelessWidget {
+  const MiniTubePreview({
+    super.key,
+    required this.colors,
+    this.width = 26,
+    this.height = 74,
+    this.capacity = 4,
+  });
+  final List<int> colors;
+  final double width;
+  final double height;
+  final int capacity;
+
+  @override
+  Widget build(BuildContext context) {
+    return CustomPaint(
+      size: Size(width, height),
+      painter: TubePainter(
+        bands: bandsOf(colors),
+        capacity: capacity,
+        seed: colors.length,
+      ),
+    );
+  }
+}
